@@ -77,40 +77,15 @@ class ShopifyClient:
         for product in products.get("products",[]):
             order[f"_product_{product.get("id")}"] = product
 
-
-# ── Debug helpers ─────────────────────────────────────────────────────
     def get_last_order(self) -> str:
-        data = self._get("orders.json", {"status": "any", "limit": 1, "order": "id desc"})
-        return json.dumps(data, indent=1)
+    data = self._get("orders.json", {"status": "any", "limit": 1, "order": "id desc"})
+    return json.dumps(data, indent=1)
 
 
     def get_order_by_number(self, number: str) -> str:
         data = self._get("orders.json", {"status": "any", "name": f"#{number}"})
         return json.dumps(data, indent=1)
-
-
-def get_last_order() -> str:
-    data = ShopifyClient.from_env()._get("orders.json", {"status": "any", "limit": 1, "order": "id desc"})
-    return json.dumps(data, indent=1)
-
-
-def get_order_by_number( number: str) -> str:
-    shopify = ShopifyClient.from_env()
-    data = shopify._get("orders.json", {"status": "any", "name": f"#{number}"})
-    shopify.add_products_info(data["orders"][0])
-    return json.dumps(data, indent=1)
-
-def get_product_by_id(prod_id: str):
-    data = ShopifyClient.from_env()._get(f"products/{prod_id}.json", {"status": "any"})
-    return json.dumps(data, indent=1)
-
-def get_orders_products(number: str):
-    order = json.loads(get_order_by_number(number)).get("orders","")[0]
-    products = [get_product_by_id(line_item.get("product_id","")) for line_item in order.get("line_items",[])]
-    
-    print(f" cantidad de productos: {len(products)} \n")
-    for p in products: print(p)
-
+            
 def get_products_by_name(query: str):
     client = ShopifyClient.from_env()
     url = f"{client.base_url}/graphql.json"
@@ -214,3 +189,30 @@ def update_stock(productoId: str, cantidad: int):
     "available_adjustment": cantidad}
     response = client._post("inventory_levels/adjust.json", payload)
     return {"status": response}
+
+    
+# ── Debug helpers ─────────────────────────────────────────────────────
+
+
+def get_last_order() -> str:
+    data = ShopifyClient.from_env()._get("orders.json", {"status": "any", "limit": 1, "order": "id desc"})
+    return json.dumps(data, indent=1)
+
+
+def get_order_by_number( number: str) -> str:
+    shopify = ShopifyClient.from_env()
+    data = shopify._get("orders.json", {"status": "any", "name": f"#{number}"})
+    shopify.add_products_info(data["orders"][0])
+    return json.dumps(data, indent=1)
+
+def get_product_by_id(prod_id: str):
+    data = ShopifyClient.from_env()._get(f"products/{prod_id}.json", {"status": "any"})
+    return json.dumps(data, indent=1)
+
+def get_orders_products(number: str):
+    order = json.loads(get_order_by_number(number)).get("orders","")[0]
+    products = [get_product_by_id(line_item.get("product_id","")) for line_item in order.get("line_items",[])]
+    
+    print(f" cantidad de productos: {len(products)} \n")
+    for p in products: print(p)
+
