@@ -1,0 +1,80 @@
+name: Deploy to GCP Cloud Functions
+
+on:
+  push:
+    branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # required for WIF
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest tests/ -m "not integration"
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ".../github-provider"
+          service_account: "...deployer@....com"
+
+      - name: Deploy Receiver (HTTP)
+        uses: google-github-actions/deploy-cloud-functions@v3
+        with:
+          name: receiver-function
+          runtime: python312
+          region: us-central1
+          entry_point: sync_orders_http
+          service_account: ...sync@....com
+          ingress_settings: ALLOW_ALL
+          environment_variables: |-
+            SHOPIFY_WEBHOOK_SECRET=${{ secrets.SHOPIFY_WEBHOOK_SECRET }}
+            PUBSUB_TOPIC=events-topic
+            GCP_PROJECT=...
+
+      - name: Deploy Worker (Pub/Sub push via HTTP)
+        uses: google-github-actions/deploy-cloud-functions@v3
+        with:
+          name: worker-function
+          runtime: python312
+          region: us-central1
+          entry_point: process_order
+          service_account: ...sync@....com
+          ingress_settings: ALLOW_ALL
+          service_timeout: 300
+          memory: 512Mi
+          environment_variables: |-
+            SHOPIFY_STORE=${{ secrets.SHOPIFY_STORE }}
+            SHOPIFY_TOKEN=${{ secrets.SHOPIFY_TOKEN }}
+            SPREADSHEET_ID=${{ secrets.SPREADSHEET_ID }}
+            SHEET_NAME=...
+
+      - name: Deploy Sheets Server (HTTP server for apps script)
+        uses: google-github-actions/deploy-cloud-functions@v3
+        with:
+          name: api-function
+          runtime: python312
+          region: us-central1
+          entry_point: process_sheets_request
+          service_account: ...sync@....com
+          ingress_settings: ALLOW_ALL
+          memory: 2G
+          environment_variables: |-
+            SHOPIFY_STORE=${{ secrets.SHOPIFY_STORE }}
+            SHOPIFY_TOKEN=${{ secrets.SHOPIFY_TOKEN }}

@@ -1,0 +1,9 @@
+.env
+last_order_id.txt
+venv/
+__pycache__/
+*.pyc
+docu.md
+deploy.sh
+*.json
+!tests/*.json
