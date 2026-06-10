@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #4F46E5;
+      --primary-hover: #4338CA;
+      --bg: #F9FAFB;
+      --surface: #FFFFFF;
+      --border: #E5E7EB;
+      --text: #111827;
+      --text-muted: #6B7280;
+      --radius: 8px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 16px;
+    }
+
+    h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-top: 0;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+
+    /* Buscador */
+    .search-container {
+      position: relative;
+      margin-bottom: 16px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-sizing: border-box;
+      font-family: inherit;
+      font-size: 14px;
+      transition: all 0.2s ease;
+      background: var(--surface);
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    /* Contenedor de Resultados */
+    .results {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .product-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, .05);
+      animation: fadeIn .3s ease;
+      transition: background .15s ease;
+    }
+
+    .product-card:hover {
+      background: #EEF2FF;
+    }
+
+    .product-card-clickable {
+      cursor: pointer;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .product-header {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      background: #fcfcfc;
+    }
+
+    .product-title {
+      font-weight: 600;
+      font-size: 13px;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 2px;
+    }
+
+    /* Fila de Variante (interactiva) */
+    .variant {
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .variant:not(:last-child) {
+      border-bottom: 1px solid #F3F4F6;
+    }
+
+    .variant:hover {
+      background: #EEF2FF;
+    }
+
+    .variant-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .variant-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .variant-sku {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .variant-stock {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary);
+      background: #E0E7FF;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    .sidebar-img {
+      width: 44px;
+      height: 44px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    /* Utilidades */
+    .loader {
+      display: none;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid var(--primary);
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      animation: spin 1s linear infinite;
+      position: absolute;
+      right: 12px;
+      top: 10px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 24px 0;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    /* Animaciones */
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(5px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <h2>Buscar Producto</h2>
+
+  <div class="search-container">
+    <input type="text" id="searchInput" placeholder="..." autocomplete="off">
+    <div class="loader" id="loader"></div>
+  </div>
+
+  <div class="results" id="resultsContainer">
+    <div class="empty-state">Empieza a escribir para buscar en Shopify.</div>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('searchInput');
+    const loader = document.getElementById('loader');
+    const resultsContainer = document.getElementById('resultsContainer');
+    let debounceTimer;
+
+    // Escucha cada tecla presionada
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.trim();
+      clearTimeout(debounceTimer);
+
+      if (query.length < 3) {
+        resultsContainer.innerHTML = '<div class="empty-state">Escribe al menos 3 letras...</div>';
+        loader.style.display = 'none';
+        return;
+      }
+
+      loader.style.display = 'block';
+      // Espera 350ms antes de llamar al servidor (Debounce)
+      debounceTimer = setTimeout(() => {
+        google.script.run
+          .withSuccessHandler(displayResults)
+          .withFailureHandler(handleError)
+          .buscarProductos(query);
+      }, 350);
+    });
+    searchInput.addEventListener('keydown', (e) => {
+      //feedback al usuario
+      if (e.key == "Enter") loader.style.display = 'none';
+    })
+
+    // Renderiza la lista de productos
+    function displayResults(data) {
+      loader.style.display = 'none';
+
+      const productos = data.Products ? data.Products : data;
+
+      resultsContainer.replaceChildren();
+
+      if (!productos || productos.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.textContent = 'No se encontraron productos.';
+        resultsContainer.appendChild(empty);
+        return;
+      }
+
+      productos.forEach(producto => {
+        resultsContainer.appendChild(
+          createProductCard(producto)
+        );
+      });
+    }
+
+    function handleError(error) {
+      loader.style.display = 'none';
+
+      resultsContainer.replaceChildren();
+
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'empty-state';
+      errorDiv.style.color = '#EF4444';
+      errorDiv.textContent = error?.message || 'Error desconocido';
+
+      resultsContainer.appendChild(errorDiv);
+    }
+
+    // Llama a la función que escribe en la planilla
+    function seleccionar(nombre, id_variante, talle, color) {
+      loader.style.display = 'block';
+      google.script.run
+        .withSuccessHandler(() => {
+          loader.style.display = 'none';
+          searchInput.value = '';
+          resultsContainer.innerHTML = `
+            <div class="empty-state" style="color: #10B981; font-weight: 500;">
+              ✓ ¡Insertado correctamente!
+            </div>
+          `;
+
+          // resetear UI a los 4 segundos
+          setTimeout(() => {
+            resultsContainer.innerHTML = '<div class="empty-state">Empieza a escribir para buscar...</div>';
+          }, 4000);
+        })
+        .withFailureHandler(handleError)
+        .escribirProductoEnFila(nombre, id_variante, talle, color);
+    }
+
+    function createProductCard(v) {
+      const card = document.createElement('div');
+      card.className = 'product-card';
+      card.classList.add(
+        'product-card',
+        'product-card-clickable'
+      );
+
+      const parts = (v.variant_title || '')
+        .split('/')
+        .map(p => p.trim());
+
+      const talle = parts.length > 1 ? parts[0] : '';
+      const color = parts.length > 1 ? parts[1] : '';
+
+      card.addEventListener('click', () => {
+        seleccionar(
+          v.product_title,
+          v.varianteId,
+          talle,
+          color
+        );
+      });
+
+      const image = document.createElement('img');
+      image.src = v.image || '';
+      image.alt = v.product_title || '';
+      image.className = "sidebar-img"
+
+      const content = document.createElement('div');
+      content.style.flex = '1';
+      content.style.minWidth = '0';
+
+      const title = document.createElement('div');
+      title.className = 'product-title';
+      title.textContent = v.product_title || '';
+
+      const variant = document.createElement('div');
+      variant.className = 'variant-name';
+      variant.textContent = v.variant_title || '';
+
+      const sku = document.createElement('div');
+      sku.className = 'variant-sku';
+      sku.textContent = `SKU: ${v.sku || 'N/A'}`;
+
+      content.appendChild(title);
+      content.appendChild(variant);
+      content.appendChild(sku);
+
+      const stock = document.createElement('div');
+      stock.className = 'variant-stock';
+      stock.textContent = `${v.stock ?? 0} u.`;
+
+      card.appendChild(image);
+      card.appendChild(content);
+      card.appendChild(stock);
+
+      return card;
+    }
+  </script>
+</body>
+
+</html>
