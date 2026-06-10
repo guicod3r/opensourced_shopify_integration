@@ -7,3 +7,6 @@ a simple integration with shopify and google sheets aimed at logging orders, sto
 - Git flow is being used in the production repo, here I just uploaded what I considered the most interesting modules directly.
 
 - If you have any doubt, advice or comment, my email: guigaugor@gmail.com
+
+- [system spects](https://docs.google.com/document/d/1nYI1zK9g3-_r_rfe_Lv4UbzWngBEwOVOtUYrrOlWzmI/edit?usp=sharing)
+- [development notes](https://drive.google.com/file/d/1LGb7BTuIfLlEPlK-XpEHm8neLvJjoeU0/view?usp=sharing)
